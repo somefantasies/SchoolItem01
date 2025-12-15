@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="../static/layui/css/layui.css">
+    <style>body{padding: 15px;}</style>
+</head>
+<body>
+
+<!-- 搜索栏 -->
+<div class="layui-form layui-row layui-col-space10">
+    <div class="layui-col-md3">
+        <input type="text" id="keyword" placeholder="请输入课程名称" class="layui-input">
+    </div>
+    <div class="layui-col-md2">
+        <button class="layui-btn" id="btnSearch">搜索</button>
+    </div>
+</div>
+
+<!-- 头部工具栏 -->
+<script type="text/html" id="toolbarDemo">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-sm" lay-event="add">发布新考试</button>
+    </div>
+</script>
+
+<!-- 数据表格 -->
+<table id="examTable" lay-filter="examTable"></table>
+
+<!-- 操作列 -->
+<script type="text/html" id="barDemo">
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del">删除</a>
+</script>
+
+<script src="../static/layui/layui.js"></script>
+<script>
+    layui.use(['table', 'layer', 'form', 'laydate', 'jquery'], function(){
+        var table = layui.table;
+        var layer = layui.layer;
+        var $ = layui.$;
+
+        // 渲染表格
+        table.render({
+            elem: '#examTable',
+            url: '/exam/list', // SSM后台接口
+            toolbar: '#toolbarDemo',
+            cols: [[
+                {field: 'id', title: 'ID', width: 60, sort: true},
+                {field: 'academicYear', title: '学年', width: 120},
+                {field: 'semester', title: '学期', width: 80},
+                {field: 'courseName', title: '课程名称'}, // 后端需做关联查询
+                {field: 'examTime', title: '考试时间', width: 160},
+                {field: 'examType', title: '性质', width: 100, templet: function(d){
+                        // 1-正常 2-补考
+                        return d.examType == 1 ? '<span class="layui-badge layui-bg-green">正常</span>' : '<span class="layui-badge">补考</span>';
+                    }},
+                {fixed: 'right', title:'操作', toolbar: '#barDemo', width: 150}
+            ]],
+            page: true
+        });
+
+        // 监听工具条事件
+        table.on('toolbar(examTable)', function(obj){
+            if(obj.event === 'add'){
+                // 弹出添加层 (这里为了演示简化了，实际应加载一个form页面)
+                layer.open({
+                    type: 1,
+                    title: '发布考试',
+                    area: ['500px', '400px'],
+                    content: '<div style="padding:20px;">请自行完善添加表单HTML...</div>'
+                });
+            }
+        });
+
+        // 搜索功能
+        $('#btnSearch').click(function(){
+            table.reload('examTable', {
+                where: { // 设定异步数据接口的额外参数
+                    keyword: $('#keyword').val()
+                }
+            });
+        });
+    });
+</script>
+</body>
+</html>

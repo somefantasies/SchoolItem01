@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="../static/layui/css/layui.css">
+    <script src="../static/echarts.min.js"></script> <!-- 记得引入ECharts -->
+    <script src="../static/js/jquery.min.js"></script>
+    <style>
+        body{padding: 15px;}
+        .chart-container{width: 100%; height: 400px; margin-top: 20px;}
+    </style>
+</head>
+<body>
+
+<div class="layui-card">
+    <div class="layui-card-header">成绩统计</div>
+    <div class="layui-card-body">
+        <div class="layui-form">
+            <div class="layui-inline">
+                <select id="examSelect" lay-filter="examSelect">
+                    <option value="">请选择要分析的考试</option>
+                    <!-- 动态加载 -->
+                </select>
+            </div>
+        </div>
+
+        <div class="layui-row layui-col-space15">
+            <!-- 左侧柱状图 -->
+            <div class="layui-col-md7">
+                <div id="barChart" class="chart-container"></div>
+            </div>
+            <!-- 右侧饼图 -->
+            <div class="layui-col-md5">
+                <div id="pieChart" class="chart-container"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="../static/layui/layui.js"></script>
+<script>
+    // 初始化图表实例
+    var barChart = echarts.init(document.getElementById('barChart'));
+    var pieChart = echarts.init(document.getElementById('pieChart'));
+
+    layui.use(['form', 'jquery'], function(){
+        var form = layui.form, $ = layui.$;
+
+        // 1. 加载下拉框 (省略代码，同上)
+        // ... (此处代码参考 grade-entry.html) ...
+
+        // 2. 监听选择，请求后端统计数据
+        form.on('select(examSelect)', function(data){
+            var examId = data.value;
+            if(!examId) return;
+
+            // 模拟请求后端 /stats/exam?id=xxx
+            // 假设后端返回: {code:0, data: { ranges: [5, 10, 20, 5, 2], passRate: {pass: 40, fail: 2} }}
+            $.get('/stats/exam?id=' + examId, function(res){
+                if(res.code === 0){
+                    renderCharts(res.data);
+                }
+            });
+        });
+
+        function renderCharts(data) {
+            // 渲染柱状图：分数段分布
+            barChart.setOption({
+                title: { text: '分数段分布' },
+                tooltip: {},
+                xAxis: { data: ["<60", "60-69", "70-79", "80-89", "90-100"] },
+                yAxis: {},
+                series: [{
+                    name: '人数',
+                    type: 'bar',
+                    data: data.ranges, // 后端返回的数组 [不及格人数, 60段人数, ...]
+                    itemStyle: { color: '#1E9FFF' }
+                }]
+            });
+
+            // 渲染饼图：及格率
+            pieChart.setOption({
+                title: { text: '及格情况统计', left: 'center' },
+                tooltip: { trigger: 'item' },
+                series: [{
+                    name: '访问来源',
+                    type: 'pie',
+                    radius: '50%',
+                    data: [
+                        {value: data.passRate.pass, name: '及格', itemStyle: {color: '#5FB878'}},
+                        {value: data.passRate.fail, name: '不及格', itemStyle: {color: '#FF5722'}}
+                    ]
+                }]
+            });
+        }
+    });
+
+    // 窗口大小改变时重绘
+    window.onresize = function(){
+        barChart.resize();
+        pieChart.resize();
+    }
+</script>
+</body>
+</html>

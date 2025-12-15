@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="../static/layui/css/layui.css">
+    <style>body{padding: 15px;}</style>
+</head>
+<body>
+
+<blockquote class="layui-elem-quote">成绩录入：请先选择具体的考试场次，然后在表格中直接修改分数，最后点击“保存全部”。</blockquote>
+
+<!-- 筛选条件 -->
+<form class="layui-form">
+    <div class="layui-form-item">
+        <div class="layui-inline">
+            <label class="layui-form-label">选择考试</label>
+            <div class="layui-input-inline" style="width: 300px;">
+                <select name="examId" id="examSelect" lay-filter="examSelect">
+                    <option value="">请选择考试...</option>
+                    <!-- 动态加载 -->
+                </select>
+            </div>
+        </div>
+        <div class="layui-inline">
+            <button type="button" class="layui-btn layui-btn-normal" id="saveBtn">
+                <i class="layui-icon layui-icon-release"></i> 保存全部成绩
+            </button>
+        </div>
+    </div>
+</form>
+
+<!-- 学生成绩表格 -->
+<table id="gradeTable" lay-filter="gradeTable"></table>
+
+<script src="../static/layui/layui.js"></script>
+<script>
+    layui.use(['table', 'form', 'layer', 'jquery'], function(){
+        var table = layui.table, form = layui.form, $ = layui.$;
+        var currentExamId = null;
+
+        // 1. 初始化：加载所有考试列表到下拉框
+        $.get('/exam/all', function(res){
+            // 假设res.data是 [{id:1, name:'2023第一学期-Java-正常'}, ...]
+            if(res.code === 0){
+                $.each(res.data, function(index, item){
+                    $('#examSelect').append(new Option(item.name, item.id));
+                });
+                form.render('select'); // 刷新select渲染
+            }
+        });
+
+        // 2. 监听下拉框选择
+        form.on('select(examSelect)', function(data){
+            currentExamId = data.value;
+            if(!currentExamId) return;
+
+            // 渲染该次考试的学生列表
+            table.render({
+                elem: '#gradeTable',
+                url: '/grade/listByExam?examId=' + currentExamId,
+                cols: [[
+                    {field: 'studentNo', title: '学号', width: 120, sort: true},
+                    {field: 'studentName', title: '姓名', width: 120},
+                    {field: 'score', title: '分数 (点击修改)', edit: 'text', style:'background-color: #f2f2f2; color: #009688; font-weight:bold;'},
+                    {field: 'remark', title: '备注', edit: 'text'}
+                ]],
+                limit: 1000 // 不分页，显示全部学生
+            });
+        });
+
+        // 3. 保存全部
+        $('#saveBtn').click(function(){
+            if(!currentExamId) {
+                layer.msg('请先选择考试场次');
+                return;
+            }
+
+            // 获取表格当前所有数据 (包括修改后的)
+            var tableData = layui.table.cache['gradeTable'];
+
+            // 简单的数据校验
+            for(var i=0; i<tableData.length; i++){
+                var s = tableData[i].score;
+                if(s && (isNaN(s) || s < 0 || s > 100)){
+                    layer.msg('学号 ' + tableData[i].studentNo + ' 的分数格式不正确');
+                    return;
+                }
+            }
+
+            // 发送给后端
+            $.ajax({
+                url: '/grade/batchSave',
+                type: 'POST',
+                contentType: 'application/json', // 重要：发送JSON格式
+                data: JSON.stringify({
+                    examId: currentExamId,
+                    grades: tableData
+                }),
+                success: function(res){
+                    if(res.code === 0){
+                        layer.msg('保存成功', {icon: 1});
+                    } else {
+                        layer.msg('保存失败: ' + res.msg, {icon: 2});
+                    }
+                }
+            });
+        });
+    });
+</script>
+</body>
+</html>
